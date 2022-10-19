@@ -1,0 +1,190 @@
+What prerequisities?
+	1) npm
+	2) pip
+	3) python
+	3) aws cli
+
+
+
+
+1) install cdk
+
+>npm install -g aws-cdk
+>cdk version 
+>cdk --help
+
+
+2) Useful CDK commands?
+>cdk list		//lists all stacks in app
+>cdk synthesize //generates code in cloud formation	//what is cloud formation? how CDK  deploys resources to AWS
+>cdk bootstrap
+>cdk deploy 	//Deploy stack into AWS using Cloudformation
+>cdk destroy	//
+>cdk diff
+>
+
+
+
+
+2) How to setup your application?
+> cdk init app --language typescript		//generates project files for corresponding lang
+
+> cdk init sample-app --language python
+
+What project files?
+
+a) 
+source.bat	//Windows -> bat, mac -> src
+		//sets up virtual envt in python for you
+			what is virtual envt? how to group dependencies
+
+b)setup.py
+		//modify when want to change dependencies
+			//add your dependency in install_requires [
+				"aws-cdk.aws_sqs== 1.108",...
+			]
+c) README.md
+d) cdk.json -> defines configuration for cdk project
+e) app.py		//entry point for cdk application
+
+from aws_cdk import core
+from cdk_getting_started.cdk_getting_started_stack import CdkGettingStartedStack
+
+app = Core.App()
+CdkGettingStartedStack(app, "cdk-getting-started")
+
+app.synth()
+
+//Note in CDK Project  : only 1 APP
+		We have stacks within the app
+			//stacks help logaically group various sections of deployment
+				for ex if want to deploy infrastructure -> create a stack for just deploying the infrastructure
+				for ex dynamo db table, sns topic ,sqs queue
+				what if we want to deploy dashboard ->
+					setup dashboard to monitor deployed resources
+						-> create different stack with dashboard definitions
+
+				we got 2 different stacks -> can deploy independently
+				stacks helped to organize resources into logical collections ---> fit use case
+
+f) cdk_getting_started
+	cdk_getting_started.py
+
+	from aws_cdk import (
+		aws_iam as iam,
+		aws_sqs as sqs,
+		aws_sns as sns,
+		aws_sns_subscriptions as subs,
+		aws_s3 as s3,
+		core
+)
+
+			note: ide interpreter and aws cdk interpreter should match
+				Ctrl+Shift+key -> Python:Select Interpreter
+
+	class cdkGettingStarted(core.stack):
+		def _init_(self,scope: core.Construct, construct_id: str, **kwargs) -> None:
+		super().__init__(scope, construct_id, **kwargs)
+
+
+g) Install dependencies
+	Terminal :
+
+	a) CDKGettingStarted				
+			./source.bat	//Setup virtual envt
+	
+	b)pip install -r requirements.txt
+		//imports in cdk_getting_started.py
+
+	c) Import S3 bucket
+		add to imports aws_s3 as s3, 
+
+		
+		bucket = s3.Bucket(self, "Myspecialbucket-2023-sdfajgnka")	//has to be globally unique name
+
+	//Resource creation done
+
+
+h) Synthesize stack
+	generate in cloudformation
+	
+
+	>cdk synth	//compiles local code in cloudformation	//makes sure code is doing what i expect
+	//can see myspecialbucket2022 resource created //s3 bucket
+
+
+i) Deploy to AWS
+	cdk deploy
+	Note: Configure AWS IAM User policy and get basic permissions
+
+	-> s3 create bucket policy
+
+	A) Create User
+	1) aws console
+	2) iam
+	3) Users
+	4) Add suer
+		programmatic access
+	5) Next: tags
+	6) Next: review
+		-> Create user
+		-> get access key id and Secret access key
+	7) aws configure
+	   *paste access key*
+	   *paste secret access key*
+
+	B) Create Policy
+	IAM -> Policies -> Create policy -> JSON
+	//What policies needed to deploy to AWS via cloudformation via CDK
+	{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": [
+                "cloudformation:DescribeStacks",
+                "cloudformation:CreateChangeSet",
+                "cloudformation:DescribeChangeSet",
+                "cloudformation:ExecuteChangeSet",
+                "cloudformation:DescribeStackEvents",
+                "cloudformation:DeleteChangeSet",
+                "cloudformation:DeleteStack",
+                "cloudformation:GetTemplate",
+                "s3:CreateBucket"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+	-> Next -> Next review
+	-> CDKDeployerPolicy
+		-> Create policy
+
+
+	C)
+	Users -> CDK Deploy User -> Add permissions -> Attach existing policies directly
+	Search for CDKDeployerPolicy
+
+
+j) >cdk diff
+	1) + AWS::S3::Bucket --> Implies if we deploy now -> creates a bucket for us
+   >cdk deploy
+		
+--------------S3 Bucket Created-------------------------------
+Check:
+
+AWS Console ---> S3 
+//find bucket appended with stackappname
+
+
+What if we delete: 		bucket = s3.Bucket(self, "Myspecialbucket-2023-sdfajgnka")	
+cdk diff
+//see we removed s3 bucket
+
+
+>cdk deploy
+
+
+>cdk destroy cdk-getting-started
+		

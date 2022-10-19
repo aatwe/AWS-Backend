@@ -1,0 +1,55 @@
+1) Compute services  //where code gets run -> many options where we want to run our code
+		Which type of compute is best for our problem
+	a) EC2 (Elastic Cloud Compute)	 : Allows to rent virtual machines from AWS		
+		//we control patching/ security vulnerabilities/ access controls//maintenance is headache
+	b) Lambda(Trendy) : Serverless //allows to host functions on aws	
+		What is function? section/block of code we can run dynamically on fly		
+		dont have to worry about low level resources / machines running the code -> lambda handles all
+	Docker container : ECS(can deploy different container thru docker images and setupapplications running the docker containers : Adhoc jobs or full fledged services where want x no. of container running at all times / setup loadbalancing and auto scaling to scale up traffic easily when workload rises)
+	 / EKS ()
+
+	c) Load Balancer : helps  distribute traffic to multiple node sto achieve horizontal scalability
+		What types of load balancers?
+		Application load balancer (Operate at L7 level)
+		Network load balancer       (Operate at L4 level)	//check OSI model
+
+	d) Certificate Manager : if we want to enable ssl on endpoints
+		makes certificate avail to us and allows to bind them
+
+++++++++++++++++++++++++++++++++++++++++++	
+	 	 //Message Orchestration
+	e) Simple NotificationService : pub in pubsub : similar to in apache kafka
+		There is a topic -> topic is scoped to problem/use case
+		for ex credit card application -> topic is about transactions
+		Every time a transaction comes through, push a message to topic
+		
+		What on other end of topic? subscriber -> people interested in learning about when changes occur on the topic
+		
+
+	f)Simple Queue Service : Common subscriber to SNS topic. simple queue services -> SNS + SQS = popular config to get notified when changes occur on a topic
+		//similar to classic queue in computer science : there is build up of messages 
+			-> meessages can sit there and queue over time
+			can have fifo queue-> to proces messages in same order they are received
+			non fifo queue -> take whatever avail from sqs in no order
+
+		Forming the concept of backpressure -> can slow down and speed up rate of processing of queue  //upto you as developer
+		//can also integerate SQS with other services -> popular one = lambda
+			with lambda -> when message arrives in queue -> can process them in lambda function
+
+	g) Step functions : workflow orchestration:
+		If need to do things in sequence/also need retries / side branch logic(What to do if certain step in workflow fails)
+		v powerful for workflow orchestration
+
+	
+
+++++++++++++++++++++++++++++++++++++++++++	
+	 	 //Databases
+	a) Dynamo DB / NoSQL DB built and offered by AWS
+		//fully managed database solution, dont have to worry about infrastructure, meant for scale	
+		NOSQL -> less flexible query patterns  //defacto choice for nosql on aws
+	b) Relational Database Service : RDS
+		//has engines we can choose from -> can set it up Microsoft SQL server / Postgres/Aurora/Oracle and other options
+		//inhouse rds engine = aurora  -> offer 1) serverless : Dont have to worry about infra  2) provisioned mode: More control to manage instance in a way we want
+	c) ElastiCache : Optimization service : allows to host cache on dedicated instances/machines within elastic cache
+			//can choose cache out/memcache/redis etc
+			//great for lowering latency  if we need to store objects in memory

@@ -1,0 +1,286 @@
+Objective:
+
+A) Aurora Serverless Perspective:
+
+
+1) Ceate aurora rds serverless instance	
+	how? MYSQL + Postgres
+
+2) Combine aurora rds with lambda
+	why? for querying rds serverless instance
+
+
+
+What does server less mean here? no database instances or compute instances will be involved 
+	---> Cost effective and can scale up and down  in response to high or low throughput
+
+
+
+
+
+
+1) AWS Console -> RDS
+	//Managed Relational Database Service
+	
+2) Create database
+		-> Standard Create  (Easy create : serverless option missing)
+		-> Engine: Amazon Aurora		//Supprts serverless
+				MySQL				//does not
+				Postgres 			//does not
+		-> Aurora with 
+				MySQL				//Select
+				Postgres
+
+		->Capacity type
+				Provisioned:		//Dont use //traditional
+				Serverless			//User serverless
+
+
+		-> Verison:
+				Aurora MySQL: 5.6.10a
+
+
+
+	     ->DB Cluster Identifier
+			auroraserverlessdemo
+
+		->Master Username:admin
+		  Master Password
+
+		//Note : These credentials are for admin account
+		  How will we interact with this DB?	
+				NO: Database connection URL String:  Traditional
+				YES:Data Plane API	: Can perform HTTP Queries against DB : 
+							isntead of forming DB connection with Db
+								
+					Why cool? makes easy to access database
+						aws worries about conection pool management
+						//when not using serverless -> we have to worry about it
+
+	
+		-> Capacity Settings
+			ACU: 8 -> 16GB RAM	//reasonable
+							//when is more needed? someone DDos our application-> make us query database like crazy
+
+		-> Additional Scaling config
+			dont mess
+
+		-> rds -> deployed in vpc (virtual cloud isolated from other aws accounts)
+			//basically our rds is deployed in a virtual cloud VPC
+			//everyone has default vpc when creating account
+
+		-> Additional config:	
+			-> config to use data api	//webservice
+				//allows us to interact with DB using HTTP Endpoint
+											instead of database connection
+				//will also allow us to run queries in console itself
+
+
+			-> Initial database name:
+				//serverlessdemo
+
+		
+			-> DB Cluster parameter group:	//default aurora
+
+			-> deletion protection: uncheck (if want to delete later)
+
+
+		==> CREATE DATABASE
+
+
+3) DB Identifier -> Available 
+	Connectivitiy & Security
+			Endpoint
+			Port
+
+4) Run queries , create table
+	a) Query Editor
+	b) Database instance    : auroraserverlessdemo
+	   Database username    : admin
+	   Database PW	        :
+	   database/sceham name : serverlessdemo
+	
+		-> Connect database
+
+5) Editor
+	defautl code:
+	select * from information_schema.tables	
+	
+	-> Run
+	#view schema information
+
+
+6) Create own table
+	CREATE TABLE Customers {
+		CustomerId int,
+		FirstName varchar(255)
+
+} 
+
+>Output: Success
+
+
+7) Insert data into table
+	INSERT INTO Customers (CustomerId, Firstname) VALUES (1, 'John Doe')
+
+8) Select data
+	SELECT * from Customers;
+
+>Output See data
+CustomerId		FirstName	
+1			JohnDoe
+
+----------Aurora Serverless Perspective done----------------------------
+
+B) Lambda Function Perspective:
+
+1) AWS Console -> Lambda -> Create Function
+	Author from Scratch
+
+		functionName : AuroraLambdaServerlessDemo
+		Runtime : Python 3.7	//lang doesnt matter -> can use SDKs for the APIs we will use
+		  
+
+		Default execution role: Create new role with basic lambda permission
+
+	==> Create function
+
+
+	//note: if we had used traditional  rds provisioned instance 
+				-> if we had to use lambda 
+						would have had to deploy lambda -> into same vpc as rds instance
+	//data api avoided us doing that Data api OP
+
+
+2) lambda_function.py
+
+import json
+import boto3	#library used to interact with aws service endpoints
+
+rds_client = boto3.client('rds-data')
+
+database_name = 'serverlessdemo '			#hot to find database name: AmazonRDS ->Databases -> Configuration -> DBName:serverlessdemo
+db_cluster_arn = ' '			
+									#how to find database name: AmazonRDS ->Databases -> Configuration -> arn:aws:rds:us-east...
+									
+db_credentials_secrets_store_arn = '*paste* '			#a service secrets help to hide credentials we use to access data API
+									#how to find? AWSConsole-> SecretsManager -> select your arn -> retrieve secret value
+													//this information was hidden unless person has right role
+
+
+
+def lambda_handler(event, context):
+	response = execute_statement('SELECT*FROM serverlessdemo.Customers');
+	return response;
+	
+
+def execute_statement(sql):
+	response = rds_client.execute_statement(
+		secretArn= db.credentials_secrets_store_arn,	
+		database=database_name,
+		resourceArn =db_cluster_arn,
+		sql = sql
+	)
+
+	return response;
+#will we be able to get the secrets arn? no.we dont have permissions
+
+-> given: Event name : foobar
+=> DEPLOY
+=> TEST
+
+Access Denied Exception
+
+How to solve?
+
+
+3) Create correct roles
+	IAM -> Roles -> Create Role -> Lambda(Allows lambda function to call AWS Services on our behalf)
+		-> Policy: 
+					AmazonRDSDataFullAccess -> Tick -> Next
+					AWSLambdaBasicExecutionRole -> Tick -> Next
+		   Rolename: Aurora.lambda.Role
+		=> Create Role
+
+
+
+4) GIve Serverless correct roles
+
+AWSConsole -> Lambda -> Configuration -> Permissions -> Role name -> Edit
+		-> Select AuroraLambdaRole
+			Memory: 128MB
+			Timeout: 10 sec
+		-> Save
+
+
+5) Test Code again
+Lambda-> COde ==> TEST
+
+>Response? #JSON OBejct
+{
+...
+
+"records" : [
+	[
+		{
+			"longValue":1
+},
+	{
+			"stringValue": "John Doe"
+}
+]
+]
+}
+
+
+Q) How will we extract this data? parsing?
+6) Extract data by parsing
+
+lambda_function.py
+
+import json
+import boto3	#library used to interact with aws service endpoints
+
+rds_client = boto3.client('rds-data')
+
+database_name = 'serverlessdemo '			#hot to find database name: AmazonRDS ->Databases -> Configuration -> DBName:serverlessdemo
+db_cluster_arn = ' '			
+									#how to find database name: AmazonRDS ->Databases -> Configuration -> arn:aws:rds:us-east...
+									
+db_credentials_secrets_store_arn = '*paste* '			#a service secrets help to hide credentials we use to access data API
+									#how to find? AWSConsole-> SecretsManager -> select your arn -> retrieve secret value
+													//this information was hidden unless person has right role
+
+
+
+def lambda_handler(event, context):
+	response = execute_statement('SELECT*FROM serverlessdemo.Customers');
+	return response['records'];				#Changed here
+	
+
+def execute_statement(sql):
+	response = rds_client.execute_statement(
+		secretArn= db.credentials_secrets_store_arn,	
+		database=database_name,
+		resourceArn =db_cluster_arn,
+		sql = sql
+	)
+
+	return response;
+
+
+
+>Output:
+[
+	[
+		{
+			"longValue":1
+},
+	{
+			"stringValue": "John Doe"
+}
+]
+]
+
+
+//Data found //we can iterate over this

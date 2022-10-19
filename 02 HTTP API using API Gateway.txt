@@ -1,0 +1,335 @@
+Objective: Create 2 routes for HTTP(protocol) api
+	route 1: GET API ->  /getPerson	
+	route 2: POST API->  /createPerson
+
+
+Backed by? : Lambda Function
+	Add conditional logic to lambda function
+
+
+
+
+1) AWS Console :-> API Gateway
+
+2) Choose API Type:
+	a) HTTP API
+		-> Build
+	b) Websocket API
+
+
+3) Add Integerations
+	-> Lambda
+		-> AWS Region:
+		-> Lambda Function Name	//Insert after creating lambda function
+			//DemoAppFunction
+		   API name: Persons
+
+		-> Next ->6) Configure Routes
+
+4) Create Lambda function
+	-> AWS Console
+		-> Lambda
+			->Create function
+				-> Author from Scratch
+					Name : DemoAppFunction
+					Runtime: Python3.8
+					-> Create function
+					//IAM Role etc eill be created behind the scene
+
+	-> 3) Add Integeration in API Gateway
+
+5) Open lambda_function.py in Code editor in AWS Console
+
+define lambda_handler(event,context):
+	# TODDO Implement
+	return {
+		'statusCode': 200,
+		'body': json.dumps('Hello from Lambda!')
+	}
+
+
+6) Configure Routes
+What routes we need?
+	route 1: GET API ->  /getPerson	
+	route 2: POST API->  /createPerson
+
+
+a)
+Method:  Get
+Resource Path:/getPerson
+Integeration Target: DemoAppFunction
+
+b)
+Method:  POST
+Resource Path:/createPerson
+Integeration Target: DemoAppFunction
+
+
+
+7) Configure Stages -> Use a stage that means something 
+Stage name: $default
+--> Auto Deploy check	//if we change any setting -> it will auto deploy	//note: REST is not auto deploy
+-> Next
+
+
+8) In API Gateway -> Details
+
+Invoke URL:https://prg8ewzsr4.execute-api.us-east-1.amazonaws.com
+		What is this? API Gateway endpoint URL
+		URL we will use to invoke lambda function
+		//how to change this endpoint if needed? Other lesson
+
+
+ 		what if we click? we invoke api gateway endpoint
+	
+What response? {"message":"Not Found"}
+		//Why above message? no mapping since nothing in path
+
+What if we use get route getPerson with this endpoint? https://prg8ewzsr4.execute-api.us-east-1.amazonaws.com/getPerson
+//note via browser -> always get request
+
+What output? "Hello from Lambda"		//where this was defined? in lambda function code above 5)
+
+WE HAVE SUCCESSFULLY INVOKED LAMBDA FUNCTION THROUGH API GATEWAY
+
+What if we use
+
+9) What if we use POST route CreatePerson with this endpoint? 
+https://prg8ewzsr4.execute-api.us-east-1.amazonaws.com/CreatePerson
+
+{"message":"Not Found"}
+//why? we are making get request on a endpoint that supports post
+
+
+10)
+POSTMAN : 
+helps make 
+	1) Service calls
+	2) Requests to end point
+	3) Configure options
+
+
+
+ We will test Getperson and Createperson api routes
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+A) GET : https://prg8ewzsr4.execute-api.us-east-1.amazonaws.com/GetPerson   --> Send
+
+//Output: "Hello from Lambda!"
+
+
+
+ How to add Parameters ? Params
+	1) For ex pass Person id 
+		Key			value
+		personId		personId123
+
+//What happens? personId-personId123 gets added to Query String
+-> Send
+>Output: "Hello from Lambda!"
+
+
+Q) How to extract values from events?
+
+a) Print the event in lambda source code -> Deploy
+define lambda_handler(event,context):			//what event object contains? values we passed into lambda function from api gateway (from POSTMAN)
+	# TODDO Implement
+	print(event)	//removed the return statement
+
+-> DEPLOY
+
+
+b) POSTMAN -> Send
+	>Output : null
+
+
+c) Check logs for the lambda function:
+Cloud watch = Debugging tool
+
+c.1)  AWS Console -> Duplicate -> Cloudwatch
+
+c.2)  Logs
+	  Log groups	
+		*ourlambdafunction* OR	/aws/lambda/DemoAppFunction
+
+c.3) Check log streams	//when log stream spitted out? whenever lambda function changed /+ deployed
+		
+
+c.4) observe print event + payload
+	{'version': '2.0', 'routekey': 'GET/getPerson', 'rawPath': '/getPerson'.....}
+
+
+	//Copy everything JSON
+
+c.5) Google -> JSON curious concept (Parser)
+	*Paste JSON -> Process -> Formatted JSON
+
+
+c.6) Some important JSON keys:
+	rawPath: "/getPerson"		//tells which API is being invoked /Queries database -> returns person object back from database
+						//CreatePerson -> inserts into database, returns something back
+
+	routeKey : "GET /getPerson"	//tells which method in addition to route
+	rawQueryString: "personId=personId123"
+	queryStringParameters: personId123	//key and value we passed
+
+b)How will we extract data? Query String parameters and Lambda function
+Note: we wont call dfatabase in below to keep simple
+
+
+import json
+import uuid	//randomly generates hash
+
+GET_RAW_PATH = "/getPerson"			//path for getperson api
+CREATE_RAW_PATH = "/createPerson"	//path for create person api
+
+def lambda_handler(event,context):
+	print(event)
+	#identify which route
+	if event['rawPath'] == GET_RAW_PATH:
+	print("Start Request for GetPerson")
+
+	#extract
+	personId = event['queryStringParameters']['personId']
+	print("Received request with personId=: +personId)
+
+	
+	return {"firstName": "Daniel", "lastName" : "G", "email": "myEmail@gmail.com}
+
+
+	elif event['rawPath'] == CREATE_RAW_PATH:	
+	print("Start Request for CreatePerson")
+	
+
+--> Deploy
+
+c) Test in Postman
+	GET : https://prg8ewzsr4.execute-api.us-east-1.amazonaws.com/GetPerson   --> Send
+
+	Parameters:
+		Key			value
+		personId		personId123
+
+	-> Send
+
+
+>Output: //what is this? we have got output from handler function after accessing get api endpoint
+{
+	"firstName" : "Daniel"
+	"lastName"	 : "G"
+	"email"	 : "myEmail@gmail.com"
+
+}
+
+
+
+d) Check log streams
+
+
+B)
+B.1) POST : https://prg8ewzsr4.execute-api.us-east-1.amazonaws.com/CreatePerson   --> Send
+
+Parameters:
+		Key			value
+		personId		personId123
+
+Body:	//we pass this data
+{
+	"firstName" : "Daniel"
+	"lastName"  : "G",
+	"email"	 : "myEmail@gmail.com"
+
+}
+
+--> Send  (2wice)	//why 2wice?
+
+B.2) CloudWatch: 
+
+	copy json from cloudwatch -> parse
+	
+	//routeKey and rawpath changed
+	"rawQueryString" : " " 	//Why empty? since post request -> have to pass data in body of request
+  
+	//where is body? at end of JSON
+
+	"body" : "\n\\t\"firstName\ "\Daniel\", \n\t\" lastName"	
+	//Data found
+	
+
+//What happens? personId-personId123 payload gets added to Query String parameter
+	2) Body:
+		"firstName" : "Daniel",
+		"lastName" : "6",
+		"email": "myEmail@gmail.com" 
+
+//Lambda function for POST Request, decode body object using Lambda function
+
+
+import json
+import uuid	//randomly generates hash
+
+GET_RAW_PATH = "/getPerson"			//path for getperson api
+CREATE_RAW_PATH = "/createPerson"	//path for create person api
+
+def lambda_handler(event,context):
+	print(event)
+	#identify which route
+	if event['rawPath'] == GET_RAW_PATH:
+	print("Start Request for GetPerson")
+
+	#extract
+	personId = event['queryStringParameters']['personId']
+	print("Received request with personId=: +personId)
+
+	
+	return {"firstName": "Daniel", "lastName" : "G", "email": "myEmail@gmail.com}
+
+
+	elif event['rawPath'] == CREATE_RAW_PATH:	
+	print("Start Request for CreatePerson")
+	decodedEvent = json.loads(event['body'])		//pass body content to loads function of json library
+										//What is decodedEvent? Python dictionary? Implies what? can access properties we pass in
+	firstName = decodedEvent['firstName']
+	print("Received  a request with  firstName=" +firstName)
+
+	#Call database# hypothetically, we dont write here though
+	
+	#return id person back using uuid library
+	return {"personId": str(uuid.uuid1())}
+
+
+--> DEPLOY
+
+
+//Test in POSTMAN
+	
+POST : https://prg8ewzsr4.execute-api.us-east-1.amazonaws.com/CreatePerson   --> Send
+
+Parameters:
+		Key			value
+		personId		personId123
+
+Body:
+{
+	"firstName" : "Daniel",
+	"lastName"  : "G",
+	"email" 	 : "myEmail@gmail.com"
+	
+}
+	
+
+>Output:
+{
+	"personId" : "8dfff292d-c0ce-11eb-900f-7fae390ef802"	//this uuid keeps changing 
+}
+
+
+//Check in cloudwatch
+	Logstream
+
+START REQUEST
+Object
+Start request for CreatePerson
+Received request with first-Name-Daniel
+END Request
+
